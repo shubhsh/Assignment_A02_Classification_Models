@@ -1,0 +1,339 @@
+---
+title: "MBA6693 - Business Analytics: Assignment-2"
+author: "Shubh Sharma"
+date: "Date of Submission: 18 July 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1. Introduction
+
+In this document, we are going to find the best classification model (among Multinomial Logistic Regression, Linear Discriminant Analysis and k-Nearest Neighbors) that can fit the Iris data set. We will also look at the relationship between error rates and model complexity. We will also look at the relationship between several predictors and the response variable and find out which predictor(s) best describe the response variable.
+
+
+# 2. Data Description
+
+This data set is taken from University of California at Irvin's Machine Learning Repository at https://archive.ics.uci.edu/ml/datasets/iris. The data set contains 3 classes of 50 instances each, where each class refers to a type of iris plant. One class is linearly separable from the other two while the latter two are not linearly separable from each other.
+
+### Attribute Information
+
+* Sepal Length (in cm)
+* Sepal Width (in cm)
+* Petal Length (in cm)
+* Petal Width (in cm)
+* Class: Iris Setosa, Iris Versicolour, Iris Virginica
+
+
+### Libraries
+
+* Important libraries needed for this classification problem are loaded below:
+
+```{r}
+library(ellipse)
+library(caret)
+library(corrplot)
+library(ggiraphExtra)
+library(ggplot2)
+library(broom)
+library(readr)
+library(MASS)
+library(e1071)
+library(nnet)
+```
+
+### Load Data
+
+* The data is loaded from the CSV file:
+
+```{r}
+
+iris_data_tribble <- read_csv("C:/Users/casa/Documents/MCS/Business Analytics/Assignments/Assignment2/iris_data.csv")
+iris_data <- data.frame(iris)
+
+```
+
+### Data Structure
+
+* Structure of the Iris data frame created above is shown below:
+
+```{r}
+str(iris_data)
+```
+### Splitting the Data Set
+
+* We will split the Iris data set into subsets in a ratio of 80:20 (training set:validation set).
+
+
+```{r}
+split_index <- createDataPartition(iris$Species, p=0.80, list=FALSE)
+prediction_dataset <- iris[-split_index,]
+# use the remaining 80% of data to training and testing the models
+iris_data <- iris[split_index,]
+View(prediction_dataset)
+```
+
+### Snapshot of Data
+
+```{r}
+head(iris_data)
+```
+
+
+# 3. Exploratory Data Analysis
+
+## (A) Univariate Analysis
+
+* Dividing the input data set into two data sets that store inputs and output variables separately.
+
+```{r}
+inputs <- iris_data[,1:4]
+output <- iris_data[,5]
+```
+
+### BoxPlots
+
+* Boxplots for each of the input attribute variables show that there are clearly different distributions of the attributes for each class value
+
+
+```{r}
+# boxplot for each attribute on one image
+par(mfrow=c(1,4))
+  for(i in 1:4) {
+  boxplot(inputs[,i], main=names(iris_data)[i])
+}
+```
+      
+
+### Histograms
+
+* Histograms for each of the four predictors depicting data distribution
+
+```{r}
+par(mfrow=c(2,2))
+  hist(iris_data$Sepal.Length)
+  hist(iris_data$Sepal.Width)
+  hist(iris_data$Petal.Length)
+  hist(iris_data$Petal.Width)
+
+```
+
+
+## (B) Multivaruate Analysis
+
+### BoxPlots against the Species Class
+
+* Boxplots for each of the input attribute variables show that there are clearly different distributions of the attributes for each class value
+
+```{r}
+featurePlot(x=iris_data[,1:4], y=iris_data[,5], plot="box", scales=list(x=list(relation="free"), y=list(relation="free")), auto.key=list(columns=3))
+```
+   
+### Density Plots againt the Species Class
+
+* We can see the difference in distribution of each attribute by class value. We can also see the Gaussian-like distribution (bell curve) of each attribute.
+
+
+
+```{r}
+featurePlot(x=iris_data[,1:4], y=iris_data[,5], plot="density", scales=list(x=list(relation="free"), y=list(relation="free")), auto.key=list(columns=3))
+```
+
+     
+### Petal Length vs Petal Width plot
+
+* The graph below shows the relationship between the petal length and width for the three classes.
+
+```{r}
+plot(iris$Petal.Length, iris$Petal.Width, pch=21, bg=c("red","green3","blue")[unclass(iris$Species)], main="Edgar Anderson's Iris Data")
+```
+
+     
+### Sepal Length vs Sepal Width plot
+
+* The graph below shows the relationship between the sepal length and width for the three classes.
+
+```{r}
+plot(iris$Sepal.Length, iris$Sepal.Width, pch=21, bg=c("red","green3","blue")[unclass(iris$Species)], main="Edgar Anderson's Iris Data")
+```
+     
+### Correlation 
+
+* The following plot shows the correlation between several predictors.
+* We can see that Sepal.Width is not correlated very well to the other three predictors
+* Sepal.Length, Petal.Length and Petal.width have high correlation amongst each other.
+
+```{r}
+correlations <- cor(iris_data[,1:4])
+corrplot(correlations, method="circle")
+```
+    
+### Overall Plot
+
+```{r}
+plot(iris_data)
+```
+
+
+# 4. Models
+
+* We are going to build 12 models using three algorithms: Multinomial Logistic Regression, Linear Discriminant Analysis and k-Nearest Neighbors.
+
+* Steps To Be followed When applying an algorithm:
+  - Split the data set into training and testing data set. The testing data set is generally smaller than training one as it will help in training the model better.
+  - Select any algorithm based on the problem (classification here)
+  - Then pass the training data set to the algorithm to train it
+  - Then pass the testing data to the trained algorithm to predict the outcome
+  - We then check the accuracy by passing the predicted outcome and the actual output to the model.
+
+## (A) Logistic Regression
+
+### Model Logit.1 (with one predictor)
+
+```{r}
+fit.glm=multinom(Species~Sepal.Length, data=iris_data)
+print(fit.glm)
+```
+### Model Logit.2 (with two predictors)
+```{r}
+fit.glm=multinom(Species~Sepal.Length+Sepal.Width, data=iris_data)
+print(fit.glm)
+```
+### Model Logit.3 (with three predictors)
+```{r}
+fit.glm=multinom(Species~Sepal.Length+Sepal.Width+Petal.Width, data=iris_data)
+print(fit.glm)
+```
+### Model Logit.4 (with all predictors)
+```{r}
+fit.glm=multinom(Species~Sepal.Length+Sepal.Width+Petal.Width+Petal.Length, data=iris_data)
+print(fit.glm)
+```
+### Observation
+
+  * The best model among all the LDA models is Logit.4 since it has the highest accuracy and lowest error. It is observed that as the complexity of the model increases, the error rate decreases.
+  
+## (B) Linear Discriminant Analysis (LDA)
+
+### Model LDA.1 (with one predictor)
+
+```{r}
+control <- trainControl(method="cv", number=10)
+metric <- "Accuracy"
+set.seed(7)
+fit.lda <- train(Species~Sepal.Length, data=iris_data, method="lda", metric=metric, trControl=control)
+print(fit.lda)
+```
+### Model LDA.2 (with two predictors)
+
+```{r}
+control <- trainControl(method="cv", number=10)
+metric <- "Accuracy"
+set.seed(7)
+fit.lda <- train(Species~Sepal.Length+Sepal.Width, data=iris_data, method="lda", metric=metric, trControl=control)
+print(fit.lda)
+```
+### Model LDA.3 (with three predictors)
+```{r}
+control <- trainControl(method="cv", number=10)
+metric <- "Accuracy"
+set.seed(7)
+fit.lda <- train(Species~Sepal.Length+Sepal.Width+Petal.Width, data=iris_data, method="lda", metric=metric, trControl=control)
+print(fit.lda)
+```
+### Model LDA.4 (with all predictors)
+```{r}
+control <- trainControl(method="cv", number=10)
+metric <- "Accuracy"
+set.seed(7)
+fit.lda <- train(Species~., data=iris_data, method="lda", metric=metric, trControl=control)
+print(fit.lda)
+```
+### Observation
+
+  * The best model among all the LDA models is LDA.4 since it has the highest accuracy and lowest error. It is observed that as the complexity of the model increases, the error rate decreases.
+  
+## (C) kNN
+
+### Model kNN.1 (with one predictor)
+
+```{r}
+set.seed(7)
+fit.knn <- train(Species~Sepal.Length, data=iris_data, method="knn", metric=metric, trControl=control)
+print(fit.knn)
+```
+### Model kNN.2 (with two predictors)
+```{r}
+set.seed(7)
+fit.knn <- train(Species~Sepal.Length+Sepal.Width, data=iris_data, method="knn", metric=metric, trControl=control)
+print(fit.knn)
+```
+### Model kNN.3 (with three predictors)
+```{r}
+set.seed(7)
+fit.knn <- train(Species~Sepal.Length+Sepal.Width+Petal.Length, data=iris_data, method="knn", metric=metric, trControl=control)
+print(fit.knn)
+```
+### Model kNN.2 (with all predictors)
+```{r}
+set.seed(7)
+fit.knn <- train(Species~Sepal.Length+Sepal.Width+Petal.Length+Petal.Width, data=iris_data, method="knn", metric=metric, trControl=control)
+print(fit.knn)
+```
+### Observation
+
+  * The best model among all the kNN models is kNN.4 since it has the highest accuracy and lowest error. It is observed that as the complexity of the model increases, the error rate decreases.
+  
+## Comparison between Models
+
+```{r}
+summary(fit.glm)
+results <- resamples(list(lda=fit.lda, knn=fit.knn))
+summary(results)
+```
+### Observation
+
+  * The best model (according to standard errors) among Logit.4, LDA.4 and kNN.4 is LDA.4 since it has the highest accuracy and lowest error.
+
+# 5. Prediction
+
+## Prediction by Model Logit.4 
+
+```{r}
+predictions_glm <- predict(fit.glm, prediction_dataset)
+print(predictions_glm)
+confusionMatrix(predictions_glm, prediction_dataset$Species)
+```
+## Prediction by Model LDA.4 
+
+```{r}
+predictions_lda <- predict(fit.lda, prediction_dataset)
+confusionMatrix(predictions_lda, prediction_dataset$Species)
+
+```
+## Prediction by Model kNN.4 
+
+
+```{r}
+predictions_knn <- predict(fit.knn, prediction_dataset)
+confusionMatrix(predictions_knn, prediction_dataset$Species)
+
+```
+
+### Observation
+
+  * As can be seen from the confusion matrices and the accuracy values, out of the three selected models (Logit.4, LDA.4 and kNN.4) LDA.4 predicts the best with the highest accuracy.
+
+
+
+# 6. Conclusion
+
+From our observations in Section 4 and 5 above, we conclude that:
+
+* Sepal.Width is the least significant predictor among all predictors. However, it is still significant to the overall accuracy of all the models.
+* as the complexity of the models increases, the error rate decreases
+* the model LDA.4 that uses linear discriminant analysis for modeling the classification problem, preforms the best for the given data set.
+
+
